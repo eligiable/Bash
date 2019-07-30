@@ -1,5 +1,4 @@
 #!/bin/bash
-
         #Change Settings below as per need
         SleepTime="15"
         TotalConnections="50"
@@ -24,13 +23,9 @@ else
         echo Total Sleeps = "${TotalSleeps}" >> /tmp/isUpDown.log
 
         if [ "${TotalSleeps}" -le "${TotalConnections}" ]; then
-
                 #cat /tmp/isUpDown.txt >> /tmp/isUpDown.log && $(which mail) -s "URGENT | Example Down" it-support@example.com < /tmp/isUpDown.log -a From:"Example <no-reply@example.com>" >> /dev/null 2>&1
-
                 $(which mail) -s "URGENT Notification | Example Down" it-support@example.com < /tmp/isUpDown.log -a From:"Example TV<no-reply@example.com>"  > /dev/null 2>&1;
-
         else
-
                 #Kill MySQL Requests
                 #mysql -h192.168.1.55 -uroot -pmagento -e "source /tmp/isUpDown.txt"
 
@@ -38,7 +33,5 @@ else
                 service php7.0-fpm restart >> /tmp/isUpDown.log
 
                 $(which mail) -s "Restarted | Example was Down" it-support@example.com < /tmp/isUpDown.log -a From:"Example TV<no-reply@example.com>" > /dev/null 2>&1;
-
         fi
-
 fi
