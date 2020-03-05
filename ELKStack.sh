@@ -138,9 +138,19 @@ sudo auditbeat setup --dashboards
 sudo auditbeat setup --index-management
 sudo auditbeat setup --pipelines
 
+# Waiting for Beats to Start
+echo "$(tput setaf 3) --- Waiting for ELK Stack to Start the Services ---" && echo "$(tput setaf 7)"
+sleep 1m
+
+# Install APM
+curl -L -O https://artifacts.elastic.co/downloads/apm-server/apm-server-${version}-amd64.deb
+sudo dpkg -i apm-server-${version}-amd64.deb
+sudo rm apm-server*
+
 # Edit Configuration
 echo "$(tput setaf 2) --- Finsh Configuration as mentioned below: ---"
 echo "$(tput setaf 3) 1. edit kibana.yml and change server.host to 0.0.0.0 so that you can connect to kibana from other systems http://IPADDRESS:5601"
 echo "$(tput setaf 3) 2. edit elasticsearch.yml and change network.host to 0.0.0.0 so that other systems can send data to elasticsearch"
 echo "$(tput setaf 3) 3. restart both services sudo systemctl restart elasticsearch kibana"
+echo "$(tput setaf 3) 4. if elasticsearch is not able to start after changing the network.host, place cluster.initial_master_nodes: node-1 at the end of the file and start elasticsearch"
 echo "$(tput setaf 7)"
