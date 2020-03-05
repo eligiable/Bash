@@ -143,6 +143,7 @@ echo "$(tput setaf 3) --- Waiting for ELK Stack to Start the Services ---" && ec
 sleep 1m
 
 # Install APM
+echo "$(tput setaf 3) --- Installing APM ---" && echo "$(tput setaf 7)"
 curl -L -O https://artifacts.elastic.co/downloads/apm-server/apm-server-${version}-amd64.deb
 sudo dpkg -i apm-server-${version}-amd64.deb
 sudo rm apm-server*
