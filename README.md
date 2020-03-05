@@ -9,6 +9,10 @@ Bash Scripts to Automate
 
 > Shell Script to Delete AWS Media Sotre Files since there is no option to delete multiple files.
 
+### ELK Stack
+
+> Shell Script to install latest Stable ELK Stack on Ubuntu/Debian.
+
 ### Mongo DB Backup to AWS S3
 
 > Shell Script to Create Mongo DB Compressed Backup and upload it to AWS S3. Not suitable for Large Databases.
