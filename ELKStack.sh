@@ -143,4 +143,4 @@ echo "$(tput setaf 2) --- Finsh Configuration as mentioned below: ---"
 echo "$(tput setaf 3) 1. edit kibana.yml and change server.host to 0.0.0.0 so that you can connect to kibana from other systems http://IPADDRESS:5601"
 echo "$(tput setaf 3) 2. edit elasticsearch.yml and change network.host to 0.0.0.0 so that other systems can send data to elasticsearch"
 echo "$(tput setaf 3) 3. restart both services sudo systemctl restart elasticsearch kibana"
-echo "$(tput setaf 7)
+echo "$(tput setaf 7)"
