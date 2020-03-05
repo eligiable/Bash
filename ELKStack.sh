@@ -15,7 +15,7 @@ date
 
 # Install Java 8
 echo "$(tput setaf 3) --- Installing Java 8 ---" && echo "$(tput setaf 7)"
-sudo apt install openjdk-8-jdk
+sudo apt install -y openjdk-8-jdk
 
 # Install Elasticsearch Debian Package 
 # ref: https://www.elastic.co/guide/en/elasticsearch/reference/current/deb.html
