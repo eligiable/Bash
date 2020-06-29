@@ -1,6 +1,10 @@
 # Bash
 Bash Scripts to Automate
 
+### clear RAM
+
+> Shell Script to clear RAM based on percentage.
+
 ### Delete AWS EC2 Snapshots
 
 > Shell Script to Delete AWS EC2 Snapshots on Date/Time basis and exclude Snapshots required to be kept.
