@@ -17,6 +17,10 @@ Bash Scripts to Automate
 
 > Shell Script to install latest Stable ELK Stack on Ubuntu/Debian.
 
+### Install XMRRig
+
+> Shell Script to install XMRRig on Ubuntu 14/16.
+
 ### Mongo DB Backup to AWS S3
 
 > Shell Script to Create Mongo DB Compressed Backup and upload it to AWS S3. Not suitable for Large Databases.
