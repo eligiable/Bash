@@ -43,7 +43,7 @@ Bash Scripts to Automate
 
 ### Website/URL Statuc Check
 
-> Shell Script to keeo Monitor Website/URL Status Header and if not found 200 perforam operation e.g. Restart the Service.
+> Shell Script to keep Monitor Website/URL Status Header and if not found 200 perforam operation e.g. Restart the Service.
 
 ### clear RAM
 
