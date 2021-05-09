@@ -1,10 +1,6 @@
 # Bash
 Bash Scripts to Automate
 
-### clear RAM
-
-> Shell Script to clear RAM based on percentage.
-
 ### Delete AWS EC2 Snapshots
 
 > Shell Script to Delete AWS EC2 Snapshots on Date/Time basis and exclude Snapshots required to be kept.
@@ -44,3 +40,11 @@ Bash Scripts to Automate
 ### Monitor Website/URL
 
 > Shell Script to Monitor Website/URL and send Email Alert.
+
+### Website/URL Statuc Check
+
+> Shell Script to keeo Monitor Website/URL Status Header and if not found 200 perforam operation e.g. Restart the Service.
+
+### clear RAM
+
+> Shell Script to clear RAM based on percentage.
