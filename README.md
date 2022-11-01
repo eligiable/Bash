@@ -1,6 +1,10 @@
 # Bash
 Bash Scripts to Automate
 
+### AWS Auto Deploy
+
+> Shell Script to deploy an Auto Scaled Environment from Base Image.
+
 ### Delete AWS EC2 Snapshots
 
 > Shell Script to Delete AWS EC2 Snapshots on Date/Time basis and exclude Snapshots required to be kept.
