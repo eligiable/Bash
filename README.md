@@ -5,6 +5,10 @@ Bash Scripts to Automate
 
 > Shell Script to deploy an Auto Scaled Environment from Base Image.
 
+### Mongo Self Signed Certificate
+
+> Shell Script to create a Self Signed Certificate for Encrypted Traffic between Server and Client.
+
 ### Delete AWS EC2 Snapshots
 
 > Shell Script to Delete AWS EC2 Snapshots on Date/Time basis and exclude Snapshots required to be kept.
