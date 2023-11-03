@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# change it to "production" (without quotes) for on deploying proceess
+CONFIG_ENV=eu
+
+# start upstart script
+/root/upstart.sh $CONFIG_ENV
