@@ -2,8 +2,8 @@
 #set -x
 
 # Environmental Vars
-export AWS_ACCESS_KEY=AWS_ACCESS_KEY
-export AWS_SECRET_KEY=AWS_SECRET_KEY
+export AWS_ACCESS_KEY={YOUR_VALUE}
+export AWS_SECRET_KEY={YOUR_VALUE}
 export SECURE_ROLE_ARN="arn:aws:iam::{YOUR_VALUE}:instance-profile/ec2production"
 
 # Functions
@@ -12,16 +12,16 @@ source ./functions.sh
 # Global Vars
 ## US Env. Vars
 US_INSTANCE_TYPE="t3.medium"
-PROD_IP="0.0.0.0"
+PROD_IP="{YOUR_VALUE}"
 PROD_EIPALLOC="eipalloc-{YOUR_VALUE}"
-TEST_IP="0.0.0.0"
+TEST_IP="{YOUR_VALUE}"
 TEST_EIPALLOC="eipalloc-{YOUR_VALUE}"
 
 ## EU Env. Vars
 EU_INSTANCE_TYPE="t3.small"
-EU_PROD_IP="0.0.0.0"
+EU_PROD_IP="{YOUR_VALUE}"
 EU_PROD_EIPALLOC="eipalloc-{YOUR_VALUE}"
-EU_TEST_IP="0.0.0.0"
+EU_TEST_IP="{YOUR_VALUE}"
 EU_TEST_EIPALLOC="eipalloc-{YOUR_VALUE}"
 
 ## App Control Vars
@@ -30,7 +30,7 @@ CURRENT_TIMESTAMP=$(date +%s)
 LOG_FILE="./"$APP_VERSION"_"$CURRENT_TIMESTAMP".log"
 echo "Deploying application version: "$APP_VERSION
 echo "Getting Staging instance ID...."
-MY_INSTANCE_ID=$(/usr/bin/curl -sq http://0.0.0.0/0000-00-00/meta-data/instance-id)
+MY_INSTANCE_ID=$(/usr/bin/curl -sq http://{YOUR_VALUE}/meta-data/instance-id)
 echo "Staging instance ID: "$MY_INSTANCE_ID
 
 # Deployment
@@ -135,11 +135,11 @@ done
 echo ""
 echo " ** STAGE 4. UPDATING LB"
 
-echo "Updating ALB ..."
-aws elbv2 register-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/{YOUR_VALUE}/{YOUR_VALUE} --targets Id=${INSTANCES[0]} Id=${INSTANCES[1]}
+echo "Updating ALB secure..."
+aws elbv2 register-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/vpcsecure/26c621dfdf32d18c --targets Id=${INSTANCES[0]} Id=${INSTANCES[1]}
 
-echo "Updating NLB ..."
-aws elbv2 register-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/{YOUR_VALUE}/{YOUR_VALUE} --targets Id=${INSTANCES[0]} Id=${INSTANCES[1]}
+echo "Updating NLB sslsecure..."
+aws elbv2 register-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/vpcsslsecure/ee83af001d016b08 --targets Id=${INSTANCES[0]} Id=${INSTANCES[1]}
 
 # US STAGE 4.5 Update newly launched Instances IPs
 echo ""
@@ -157,27 +157,20 @@ aws ec2 associate-address --region us-east-1 --instance-id ${INSTANCES[0]} --pub
 ## US STAGE 5: Update Autoscale Group and Launch Configuration
 echo ""
 echo " ** STAGE 5. UPDATING AUTOSCALING CONFIGURATION"
-ASG_NAME="{YOUR_VALUE}"
-NEW_LC_NAME="{YOUR_VALUE}"$APP_VERSION
+ASG_NAME="asg_vpc_secure"
+NEW_LC_NAME="lc_vpc_secure_version_"$APP_VERSION"_"$CURRENT_TIMESTAMP
 OLD_LC_NAME=$(aws autoscaling describe-auto-scaling-groups --region us-east-1 --auto-scaling-group-name $ASG_NAME | jq -r '.AutoScalingGroups[0].LaunchConfigurationName')
 OLD_AMI_NAME=$(aws autoscaling describe-launch-configurations --region us-east-1 --launch-configuration-names $OLD_LC_NAME  | jq -r '.LaunchConfigurations[0].ImageId')
 
-
 echo "Creating new launch configuration with new AMI..."
-aws autoscaling describe-launch-configurations --region us-east-1
+aws autoscaling create-launch-configuration --launch-configuration-name $NEW_LC_NAME  --region us-east-1 --image-id $NEW_AMI_ID --instance-type $US_INSTANCE_TYPE --security-groups sg-{YOUR_VALUE} --key-name {YOUR_VALUE} --user-data file://user-data.production --iam-instance-profile $SECURE_ROLE_ARN --instance-monitoring Enabled=true
 
-if [[ $(ls -A) ]]; then
-  echo "Updating autoscaling group  with new launch config..."
-  aws autoscaling update-auto-scaling-group --region us-east-1 --auto-scaling-group-name $ASG_NAME --launch-configuration-name $NEW_LC_NAME
-
-elif [ $? -eq 1 ]; then
-aws autoscaling create-launch-configuration --launch-configuration-name $NEW_LC_NAME  --region us-east-1 --image-id $NEW_AMI_ID --instance-type t3.medium --security-groups sg-{YOUR_VALUE} --key-name {YOUR_VALUE} --user-data file://user-data.production --iam-instance-profile $SECURE_ROLE_ARN --instance-monitoring Enabled=true
+if [ $? -eq 0 ]; then
   echo "Updating autoscaling group  with new launch config..."
   aws autoscaling update-auto-scaling-group --region us-east-1 --auto-scaling-group-name $ASG_NAME  --launch-configuration-name $NEW_LC_NAME
-  echo "Removing old one launch config and old AMI..."
+  echo "Removing old launch config and old AMI..."
   aws autoscaling delete-launch-configuration --region us-east-1 --launch-configuration-name $OLD_LC_NAME
   aws ec2 deregister-image --region us-east-1 --image-id $OLD_AMI_NAME
-
 else
  echo "  !!! ERROR: Cant create launch config!"
 fi
@@ -185,12 +178,12 @@ fi
 ## STAGE 6: Update CloudWatch Alarms
 echo ""
 echo " ** STAGE 6. UPDATING CLOUDWATCH ALARMS"
-POLICY_SCALEUP_NAME="arn:aws:autoscaling:us-east-1:{YOUR_VALUE}:scalingPolicy:{YOUR_VALUE}:autoScalingGroupName/{YOUR_VALUE}:policyName/ScaleUP"
-POLICY_SCALEDOWN_NAME="arn:aws:autoscaling:us-east-1:{YOUR_VALUE}:scalingPolicy:{YOUR_VALUE}:autoScalingGroupName/{YOUR_VALUE}:policyName/ScaleDOWN"
+POLICY_SCALEUP_NAME="arn:aws:autoscaling:us-east-1:{YOUR_VALUE}:scalingPolicy:11a13eba-bf78-493e-86b7-a3f43be82485:autoScalingGroupName/asg_vpc_secure:policyName/ScaleUP"
+POLICY_SCALEDOWN_NAME="arn:aws:autoscaling:us-east-1:{YOUR_VALUE}:scalingPolicy:8930c805-94fa-4023-b17e-74a63996a1c7:autoScalingGroupName/asg_vpc_secure:policyName/ScaleDOWN"
 
-aws cloudwatch put-metric-alarm --region us-east-1 --alarm-name AMIHighCPULoad --alarm-description "AMIHighCPULoad" --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average --period 60 --threshold 75 --comparison-operator GreaterThanThreshold  --dimensions "Name=ImageId,Value=$NEW_AMI_ID" --evaluation-periods 3 --alarm-actions $POLICY_SCALEUP_NAME  --unit Percent
+aws cloudwatch put-metric-alarm --region us-east-1 --alarm-name secureAMIHighCPULoad --alarm-description "secureAMIHighCPULoad" --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average --period 60 --threshold 75 --comparison-operator GreaterThanThreshold  --dimensions "Name=ImageId,Value=$NEW_AMI_ID" --evaluation-periods 3 --alarm-actions $POLICY_SCALEUP_NAME  --unit Percent
 
-aws cloudwatch put-metric-alarm --region us-east-1 --alarm-name AMILowCPULoad --alarm-description "AMILowCPULoad" --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average --period 60 --threshold 50 --comparison-operator GreaterThanThreshold  --dimensions "Name=ImageId,Value=$NEW_AMI_ID" --evaluation-periods 3 --alarm-actions $POLICY_SCALEDOWN_NAME  --unit Percent
+aws cloudwatch put-metric-alarm --region us-east-1 --alarm-name secureAMILowCPULoad --alarm-description "secureAMILowCPULoad" --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average --period 60 --threshold 50 --comparison-operator GreaterThanThreshold  --dimensions "Name=ImageId,Value=$NEW_AMI_ID" --evaluation-periods 3 --alarm-actions $POLICY_SCALEDOWN_NAME  --unit Percent
 
 ## STAGE 7: Remove Old Instances
 echo ""
@@ -200,11 +193,11 @@ OLD_INSTANCES=$(aws ec2 describe-instances --region us-east-1 --filters "Name=ta
 
 for OLD_INSTANCE in $OLD_INSTANCES;
 do
-  echo "De-registering instance "$OLD_INSTANCES" from ALB ..."
-  aws elbv2 deregister-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/{YOUR_VALUE}/{YOUR_VALUE} --targets Id=$OLD_INSTANCES
+  echo "De-registering instance "$OLD_INSTANCES" from ALB vpcsecure..."
+  aws elbv2 deregister-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/vpcsecure/8c0ea006118d31b9 --targets Id=$OLD_INSTANCES
 
-  echo "De-registering instance "$OLD_INSTANCES" from NLB ..."
-  aws elbv2 deregister-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/{YOUR_VALUE}/{YOUR_VALUE} --targets Id=$OLD_INSTANCES
+  echo "De-registering instance "$OLD_INSTANCES" from NLB vpcsslsecure..."
+  aws elbv2 deregister-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/vpcsslsecure/8c0ea006118d31b9 --targets Id=$OLD_INSTANCES
 done
 
 ## US Deployment End
@@ -244,7 +237,7 @@ echo ""
 echo " ** STAGE 2. LAUNCHING INSTANCES ON VPC"
 echo "Trying to launch main instance in public subnet(eu-west-1a) from $EU_AMI_ID this AMI..."
 
-EU_INSTANCES=$(aws ec2 run-instances --region eu-west-1 --placement AvailabilityZone=eu-west-1a --monitoring Enabled=true --image-id "$EU_AMI_ID" --subnet-id subnet-{YOUR_VALUE} --security-group-ids sg-{YOUR_VALUE} --key-name {YOUR_VALUE} --iam-instance-profile Arn="$SECURE_ROLE_ARN" --instance-type $EU_INSTANCE_TYPE --user-data file://user-data.eu | jq -r '.Instances[0].InstanceId')
+EU_INSTANCES=$(aws ec2 run-instances --region eu-west-1 --placement AvailabilityZone=eu-west-1a --monitoring Enabled=true --image-id "$EU_AMI_ID" --subnet-id subnet-{YOUR_VALUE} --security-group-ids sg-{YOUR_VALUE} --key-name {YOUR_VALUE}-EU --iam-instance-profile Arn="$SECURE_ROLE_ARN" --instance-type $EU_INSTANCE_TYPE --user-data file://user-data.eu | jq -r '.Instances[0].InstanceId')
 
 aws ec2 create-tags --region eu-west-1 --resources "$EU_INSTANCES" --tags Key=Name,Value={YOUR_VALUE}
 aws ec2 create-tags --region eu-west-1 --resources "$EU_INSTANCES" --tags Key=Version,Value="$APP_VERSION"
@@ -291,8 +284,8 @@ done
 ## EU STAGE 4: Update Loadbalncer with newly launched Instances
 echo ""
 echo " ** STAGE 4. UPDATING LB"
-echo "Updating ALB ..."
-aws elbv2 register-targets --region eu-west-1 --target-group-arn arn:aws:elasticloadbalancing:eu-west-1:{YOUR_VALUE}:targetgroup/{YOUR_VALUE}/{YOUR_VALUE} --targets Id=$EU_INSTANCES
+echo "Updating ALB secure..."
+aws elbv2 register-targets --region eu-west-1 --target-group-arn arn:aws:elasticloadbalancing:eu-west-1:{YOUR_VALUE}:targetgroup/vpcsecure-eu/8c0ea006118d31b9 --targets Id=$EU_INSTANCES
 
 ## EU STAGE 4.5 Update newly launched Instances IPs
 echo ""
@@ -310,26 +303,20 @@ aws ec2 associate-address --region eu-west-1 --instance-id $EU_INSTANCES --publi
 ## EU STAGE 5: Update Autoscale Group and Launch Configuration
 echo ""
 echo " ** STAGE 5. UPDATING AUTOSCALING CONFIGURATION"
-ASG_NAME="{YOUR_VALUE}"
-NEW_LC_NAME="{YOUR_VALUE}"$APP_VERSION
+ASG_NAME="eu_asg_vpc_secure"
+NEW_LC_NAME="eu_lc_vpc_secure_version_"$APP_VERSION"_"$CURRENT_TIMESTAMP
 OLD_LC_NAME=$(aws autoscaling describe-auto-scaling-groups --region eu-west-1 --auto-scaling-group-name $ASG_NAME | jq -r '.AutoScalingGroups[0].LaunchConfigurationName')
 OLD_AMI_NAME=$(aws autoscaling describe-launch-configurations --region eu-west-1 --launch-configuration-names $OLD_LC_NAME  | jq -r '.LaunchConfigurations[0].ImageId')
 
 echo "Creating new launch configuration with new AMI..."
-aws autoscaling describe-launch-configurations --region eu-west-1
+aws autoscaling create-launch-configuration --launch-configuration-name $NEW_LC_NAME  --region eu-west-1 --image-id $EU_AMI_ID --instance-type $EU_INSTANCE_TYPE --security-groups sg-{YOUR_VALUE} --key-name {YOUR_VALUE}-EU --user-data file://user-data.eu --iam-instance-profile $SECURE_ROLE_ARN --instance-monitoring Enabled=true
 
-if [[ $(ls -A) ]]; then
-  echo "Updating autoscaling group  with new launch config..."
-  aws autoscaling update-auto-scaling-group --region eu-west-1 --auto-scaling-group-name $ASG_NAME --launch-configuration-name $NEW_LC_NAME
-
-elif [ $? -eq 1 ]; then
-aws autoscaling create-launch-configuration --launch-configuration-name $NEW_LC_NAME  --region eu-west-1 --image-id $EU_AMI_ID --instance-type t3.medium --security-groups sg-{YOUR_VALUE} --key-name {YOUR_VALUE} --user-data file://user-data.eu --iam-instance-profile $SECURE_ROLE_ARN --instance-monitoring Enabled=true
+if [ $? -eq 0 ]; then
   echo "Updating autoscaling group  with new launch config..."
   aws autoscaling update-auto-scaling-group --region eu-west-1 --auto-scaling-group-name $ASG_NAME  --launch-configuration-name $NEW_LC_NAME
-  echo "Removing old one launch config and old AMI..."
+  echo "Removing old launch config and old AMI..."
   aws autoscaling delete-launch-configuration --region eu-west-1 --launch-configuration-name $OLD_LC_NAME
   aws ec2 deregister-image --region eu-west-1 --image-id $OLD_AMI_NAME
-
 else
  echo "  !!! ERROR: Cant create launch config!"
 fi
@@ -337,12 +324,12 @@ fi
 ## STAGE 6: Update CloudWatch Alarms
 echo ""
 echo " ** STAGE 6. UPDATING CLOUDWATCH ALARMS"
-EU_POLICY_SCALEUP_NAME="arn:aws:autoscaling:eu-west-1:{YOUR_VALUE}:scalingPolicy:{YOUR_VALUE}:autoScalingGroupName/{YOUR_VALUE}:policyName/EUScaleUP"
-EU_POLICY_SCALEDOWN_NAME="arn:aws:autoscaling:eu-west-1:{YOUR_VALUE}:scalingPolicy:{YOUR_VALUE}:autoScalingGroupName/{YOUR_VALUE}:policyName/EUScaleDOWN"
+EU_POLICY_SCALEUP_NAME="arn:aws:autoscaling:eu-west-1:{YOUR_VALUE}:scalingPolicy:cb12df6c-9408-46ea-9235-508683e597a1:autoScalingGroupName/eu_asg_vpc_secure:policyName/EUScaleUP"
+EU_POLICY_SCALEDOWN_NAME="arn:aws:autoscaling:eu-west-1:{YOUR_VALUE}:scalingPolicy:30d02c06-4c1e-4519-ae89-e03b39e92312:autoScalingGroupName/eu_asg_vpc_secure:policyName/EUScaleDOWN"
 
-aws cloudwatch put-metric-alarm --region eu-west-1 --alarm-name AMIHighCPULoad --alarm-description "AMIHighCPULoad" --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average --period 60 --threshold 75 --comparison-operator GreaterThanThreshold  --dimensions "Name=ImageId,Value=$EU_AMI_ID" --evaluation-periods 3 --alarm-actions $EU_POLICY_SCALEUP_NAME  --unit Percent
+aws cloudwatch put-metric-alarm --region eu-west-1 --alarm-name EUsecureAMIHighCPULoad --alarm-description "EUsecureAMIHighCPULoad" --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average --period 60 --threshold 75 --comparison-operator GreaterThanThreshold  --dimensions "Name=ImageId,Value=$EU_AMI_ID" --evaluation-periods 3 --alarm-actions $EU_POLICY_SCALEUP_NAME  --unit Percent
 
-aws cloudwatch put-metric-alarm --region eu-west-1 --alarm-name AMILowCPULoad --alarm-description "AMILowCPULoad" --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average --period 60 --threshold 50 --comparison-operator GreaterThanThreshold  --dimensions "Name=ImageId,Value=$EU_AMI_ID" --evaluation-periods 3 --alarm-actions $EU_POLICY_SCALEDOWN_NAME  --unit Percent
+aws cloudwatch put-metric-alarm --region eu-west-1 --alarm-name EUsecureAMILowCPULoad --alarm-description "EUsecureAMILowCPULoad" --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average --period 60 --threshold 50 --comparison-operator GreaterThanThreshold  --dimensions "Name=ImageId,Value=$EU_AMI_ID" --evaluation-periods 3 --alarm-actions $EU_POLICY_SCALEDOWN_NAME  --unit Percent
 
 ## STAGE 7: Remove Old Instances
 echo ""
@@ -352,8 +339,8 @@ EU_OLD_INSTANCES=$(aws ec2 describe-instances --region eu-west-1 --filters "Name
 
 for OLD_INSTANCE in $EU_OLD_INSTANCES;
 do
-  echo "De-registering instance "$EU_OLD_INSTANCE" from ALB ..."
-  aws elbv2 deregister-targets --region eu-west-1 --target-group-arn arn:aws:elasticloadbalancing:eu-west-1:{YOUR_VALUE}:targetgroup/{YOUR_VALUE}/{YOUR_VALUE} --targets Id=$EU_OLD_INSTANCES
+  echo "De-registering instance "$EU_OLD_INSTANCE" from ALB vpcsecure..."
+  aws elbv2 deregister-targets --region eu-west-1 --target-group-arn arn:aws:elasticloadbalancing:eu-west-1:{YOUR_VALUE}:targetgroup/vpcsecure-eu/8c0ea006118d31b9 --targets Id=$EU_OLD_INSTANCES
 done
 
 ## EU Deployment End
