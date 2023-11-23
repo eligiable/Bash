@@ -152,7 +152,7 @@ echo "Disassociation PROD IP: "$PROD_IP"..."
 aws ec2 disassociate-address --region us-east-1 --public-ip $PROD_IP
 
 echo "Association PROD IP: "$PROD_IP" with new instance: "${INSTANCES[0]}"..."
-aws ec2 associate-address --region us-east-1 --instance-id ${INSTANCES[0]} --public-ip $PROD_EIPALLOC
+aws ec2 associate-address --region us-east-1 --instance-id ${INSTANCES[0]} --public-ip $PROD_IP
 
 ## US STAGE 5: Update Autoscale Group and Launch Configuration
 echo ""
