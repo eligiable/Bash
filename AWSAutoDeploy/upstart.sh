@@ -514,8 +514,6 @@ rm -fr /secure/www/{YOUR_VALUE}/core/Laravel/storage/logs/*.log
 /sbin/service nginx restart
 
 # activate cronjob only for the secure node with public ip address, do not change the indentation for the cron_command
-# activate cronjob only for the secure node with public ip address, do not change the indentation for the cron_command
-#!/bin/bash
 get_instance_details=""
 local_ip_address=$(ifconfig eth0 | awk '/inet /{print $2}' | cut -d':' -f2)
 
