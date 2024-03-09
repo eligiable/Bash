@@ -1,5 +1,5 @@
 #!/bin/bash
-#set -x
+set -x
 
 # Environmental Vars
 export AWS_ACCESS_KEY={YOUR_VALUE}
@@ -25,7 +25,7 @@ EU_TEST_IP="{YOUR_VALUE}"
 EU_TEST_EIPALLOC="eipalloc-{YOUR_VALUE}"
 
 ## App Control Vars
-APP_VERSION=$(cat /var/www/{YOUR_VALUE}/core/config.production.php | grep '"VERSION"' | awk '{print $3}' | perl  -pe 's/[^0-9\.]//g')
+APP_VERSION=$(cat /secure/www/{YOUR_VALUE}/core/config.production.php | grep '"VERSION"' | awk '{print $3}' | perl  -pe 's/[^0-9\.]//g')
 CURRENT_TIMESTAMP=$(date +%s)
 LOG_FILE="./"$APP_VERSION"_"$CURRENT_TIMESTAMP".log"
 echo "Deploying application version: "$APP_VERSION
@@ -69,9 +69,9 @@ echo ""
 echo " ** STAGE 2. LAUNCHING INSTANCES ON VPC"
 echo "Trying to launch main instance in public subnet(us-east-1a) from $NEW_AMI_ID AMI..."
 
-INSTANCES[0]=$(aws ec2 run-instances --region us-east-1 --placement AvailabilityZone=us-east-1a --monitoring Enabled=true --image-id "$NEW_AMI_ID" --subnet-id subnet-{YOUR_VALUE} --security-group-ids sg-{YOUR_VALUE} --key-name {YOUR_VALUE} --iam-instance-profile Arn="$SECURE_ROLE_ARN" --instance-type $US_INSTANCE_TYPE --user-data file://user-data.production | jq -r '.Instances[0].InstanceId')
+INSTANCES[0]=$(aws ec2 run-instances --region us-east-1 --placement AvailabilityZone=us-east-1a --monitoring Enabled=true --image-id "$NEW_AMI_ID" --subnet-id subnet-{YOUR_VALUE} --security-group-ids sg-{YOUR_VALUE} --key-name secure.{YOUR_VALUE}.com --iam-instance-profile Arn="$SECURE_ROLE_ARN" --instance-type $US_INSTANCE_TYPE --user-data file://user-data.production | jq -r '.Instances[0].InstanceId')
 
-aws ec2 create-tags --region us-east-1 --resources "${INSTANCES[0]}" --tags Key=Name,Value={YOUR_VALUE}
+aws ec2 create-tags --region us-east-1 --resources "${INSTANCES[0]}" --tags Key=Name,Value=secure.{YOUR_VALUE}.com
 aws ec2 create-tags --region us-east-1 --resources "${INSTANCES[0]}" --tags Key=Version,Value="$APP_VERSION"
 
 INSTANCE_PRIVATE_HOST[0]=$(aws ec2 describe-instances --region us-east-1 --instance-ids ${INSTANCES[0]} | jq -r '.Reservations[0].Instances[0].PrivateIpAddress')
@@ -87,9 +87,9 @@ echo "Instance has been successfully launched! Instance ID: ${INSTANCES[0]}"
 ## US STAGE 2: Launch Secondary Instance from Staging Image
 echo "Trying to launch secondary instance in private subnet(us-east-1c) from $NEW_AMI_ID AMI..."
 
-INSTANCES[1]=$(aws ec2 run-instances --region us-east-1 --placement AvailabilityZone=us-east-1c --monitoring Enabled=true --image-id "$NEW_AMI_ID" --subnet-id subnet-{YOUR_VALUE} --security-group-ids sg-{YOUR_VALUE} --key-name {YOUR_VALUE} --iam-instance-profile Arn="$SECURE_ROLE_ARN" --instance-type $US_INSTANCE_TYPE --user-data file://user-data.production | jq -r '.Instances[0].InstanceId')
+INSTANCES[1]=$(aws ec2 run-instances --region us-east-1 --placement AvailabilityZone=us-east-1c --monitoring Enabled=true --image-id "$NEW_AMI_ID" --subnet-id subnet-{YOUR_VALUE} --security-group-ids sg-{YOUR_VALUE} --key-name secure.{YOUR_VALUE}.com --iam-instance-profile Arn="$SECURE_ROLE_ARN" --instance-type $US_INSTANCE_TYPE --user-data file://user-data.production | jq -r '.Instances[0].InstanceId')
 
-aws ec2 create-tags --region us-east-1 --resources "${INSTANCES[1]}" --tags Key=Name,Value={YOUR_VALUE}
+aws ec2 create-tags --region us-east-1 --resources "${INSTANCES[1]}" --tags Key=Name,Value=secure.{YOUR_VALUE}.com
 aws ec2 create-tags --region us-east-1 --resources "${INSTANCES[1]}" --tags Key=Version,Value="$APP_VERSION"
 
 INSTANCE_PRIVATE_HOST[1]=$(aws ec2 describe-instances --region us-east-1 --instance-ids ${INSTANCES[1]} | jq -r '.Reservations[0].Instances[0].PrivateIpAddress')
@@ -136,10 +136,7 @@ echo ""
 echo " ** STAGE 4. UPDATING LB"
 
 echo "Updating ALB secure..."
-aws elbv2 register-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/vpcsecure/26c621dfdf32d18c --targets Id=${INSTANCES[0]} Id=${INSTANCES[1]}
-
-echo "Updating NLB sslsecure..."
-aws elbv2 register-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/vpcsslsecure/ee83af001d016b08 --targets Id=${INSTANCES[0]} Id=${INSTANCES[1]}
+aws elbv2 register-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/vpcsecure/{YOUR_VALUE} --targets Id=${INSTANCES[0]} Id=${INSTANCES[1]}
 
 # US STAGE 4.5 Update newly launched Instances IPs
 echo ""
@@ -163,7 +160,7 @@ OLD_LC_NAME=$(aws autoscaling describe-auto-scaling-groups --region us-east-1 --
 OLD_AMI_NAME=$(aws autoscaling describe-launch-configurations --region us-east-1 --launch-configuration-names $OLD_LC_NAME  | jq -r '.LaunchConfigurations[0].ImageId')
 
 echo "Creating new launch configuration with new AMI..."
-aws autoscaling create-launch-configuration --launch-configuration-name $NEW_LC_NAME  --region us-east-1 --image-id $NEW_AMI_ID --instance-type $US_INSTANCE_TYPE --security-groups sg-{YOUR_VALUE} --key-name {YOUR_VALUE} --user-data file://user-data.production --iam-instance-profile $SECURE_ROLE_ARN --instance-monitoring Enabled=true
+aws autoscaling create-launch-configuration --launch-configuration-name $NEW_LC_NAME  --region us-east-1 --image-id $NEW_AMI_ID --instance-type $US_INSTANCE_TYPE --security-groups sg-{YOUR_VALUE} --key-name secure.{YOUR_VALUE}.com --user-data file://user-data.production --iam-instance-profile $SECURE_ROLE_ARN --instance-monitoring Enabled=true
 
 if [ $? -eq 0 ]; then
   echo "Updating autoscaling group  with new launch config..."
@@ -188,16 +185,12 @@ aws cloudwatch put-metric-alarm --region us-east-1 --alarm-name secureAMILowCPUL
 ## STAGE 7: Remove Old Instances
 echo ""
 echo " ** STAGE 7. REMOVING OLD INSTANCES"
-OLD_INSTANCES_VERSION=$(aws ec2 describe-instances --region us-east-1 --filters "Name=tag:Name,Values={YOUR_VALUE}" "Name=instance-state-name,Values=running" --output text | grep TAG | grep Version | grep -v $APP_VERSION | awk '{print $3}')
-OLD_INSTANCES=$(aws ec2 describe-instances --region us-east-1 --filters "Name=tag:Version,Values=$OLD_INSTANCES_VERSION" --query 'Reservations[].Instances[].InstanceId' --output text)
+OLD_INSTANCES_VERSION=$(aws ec2 describe-instances --region us-east-1 --filters "Name=tag:Name,Values=secure.{YOUR_VALUE}.com" "Name=instance-state-name,Values=running" --query 'Reservations[].Instances[?Tags[?Key==`Version` && Value!=`'$APP_VERSION'`]].InstanceId' --output text)
 
-for OLD_INSTANCE in $OLD_INSTANCES;
+for OLD_INSTANCE in $OLD_INSTANCES_VERSION;
 do
   echo "De-registering instance "$OLD_INSTANCES" from ALB vpcsecure..."
-  aws elbv2 deregister-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/vpcsecure/8c0ea006118d31b9 --targets Id=$OLD_INSTANCES
-
-  echo "De-registering instance "$OLD_INSTANCES" from NLB vpcsslsecure..."
-  aws elbv2 deregister-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/vpcsslsecure/8c0ea006118d31b9 --targets Id=$OLD_INSTANCES
+  aws elbv2 deregister-targets --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:{YOUR_VALUE}:targetgroup/vpcsecure/{YOUR_VALUE} --targets Id=$OLD_INSTANCES
 done
 
 ## US Deployment End
@@ -237,9 +230,9 @@ echo ""
 echo " ** STAGE 2. LAUNCHING INSTANCES ON VPC"
 echo "Trying to launch main instance in public subnet(eu-west-1a) from $EU_AMI_ID this AMI..."
 
-EU_INSTANCES=$(aws ec2 run-instances --region eu-west-1 --placement AvailabilityZone=eu-west-1a --monitoring Enabled=true --image-id "$EU_AMI_ID" --subnet-id subnet-{YOUR_VALUE} --security-group-ids sg-{YOUR_VALUE} --key-name {YOUR_VALUE}-EU --iam-instance-profile Arn="$SECURE_ROLE_ARN" --instance-type $EU_INSTANCE_TYPE --user-data file://user-data.eu | jq -r '.Instances[0].InstanceId')
+EU_INSTANCES=$(aws ec2 run-instances --region eu-west-1 --placement AvailabilityZone=eu-west-1a --monitoring Enabled=true --image-id "$EU_AMI_ID" --subnet-id subnet-{YOUR_VALUE} --security-group-ids sg-{YOUR_VALUE} --key-name secure.{YOUR_VALUE}.com-EU --iam-instance-profile Arn="$SECURE_ROLE_ARN" --instance-type $EU_INSTANCE_TYPE --user-data file://user-data.eu | jq -r '.Instances[0].InstanceId')
 
-aws ec2 create-tags --region eu-west-1 --resources "$EU_INSTANCES" --tags Key=Name,Value={YOUR_VALUE}
+aws ec2 create-tags --region eu-west-1 --resources "$EU_INSTANCES" --tags Key=Name,Value=eu.{YOUR_VALUE}.com
 aws ec2 create-tags --region eu-west-1 --resources "$EU_INSTANCES" --tags Key=Version,Value="$APP_VERSION"
 
 EU_INSTANCE_PRIVATE_HOST=$(aws ec2 describe-instances --region eu-west-1 --instance-ids $EU_INSTANCES | jq -r '.Reservations[0].Instances[0].PrivateIpAddress')
@@ -285,7 +278,7 @@ done
 echo ""
 echo " ** STAGE 4. UPDATING LB"
 echo "Updating ALB secure..."
-aws elbv2 register-targets --region eu-west-1 --target-group-arn arn:aws:elasticloadbalancing:eu-west-1:{YOUR_VALUE}:targetgroup/vpcsecure-eu/8c0ea006118d31b9 --targets Id=$EU_INSTANCES
+aws elbv2 register-targets --region eu-west-1 --target-group-arn arn:aws:elasticloadbalancing:eu-west-1:{YOUR_VALUE}:targetgroup/vpcsecure-eu/{YOUR_VALUE} --targets Id=$EU_INSTANCES
 
 ## EU STAGE 4.5 Update newly launched Instances IPs
 echo ""
@@ -309,7 +302,7 @@ OLD_LC_NAME=$(aws autoscaling describe-auto-scaling-groups --region eu-west-1 --
 OLD_AMI_NAME=$(aws autoscaling describe-launch-configurations --region eu-west-1 --launch-configuration-names $OLD_LC_NAME  | jq -r '.LaunchConfigurations[0].ImageId')
 
 echo "Creating new launch configuration with new AMI..."
-aws autoscaling create-launch-configuration --launch-configuration-name $NEW_LC_NAME  --region eu-west-1 --image-id $EU_AMI_ID --instance-type $EU_INSTANCE_TYPE --security-groups sg-{YOUR_VALUE} --key-name {YOUR_VALUE}-EU --user-data file://user-data.eu --iam-instance-profile $SECURE_ROLE_ARN --instance-monitoring Enabled=true
+aws autoscaling create-launch-configuration --launch-configuration-name $NEW_LC_NAME  --region eu-west-1 --image-id $EU_AMI_ID --instance-type $EU_INSTANCE_TYPE --security-groups sg-{YOUR_VALUE} --key-name secure.{YOUR_VALUE}.com-EU --user-data file://user-data.eu --iam-instance-profile $SECURE_ROLE_ARN --instance-monitoring Enabled=true
 
 if [ $? -eq 0 ]; then
   echo "Updating autoscaling group  with new launch config..."
@@ -334,13 +327,12 @@ aws cloudwatch put-metric-alarm --region eu-west-1 --alarm-name EUsecureAMILowCP
 ## STAGE 7: Remove Old Instances
 echo ""
 echo " ** STAGE 7. REMOVING OLD INSTANCES"
-EU_OLD_INSTANCES_VERSION=$(aws ec2 describe-instances --region eu-west-1 --filters "Name=tag:Name,Values={YOUR_VALUE}" "Name=instance-state-name,Values=running" --output text | grep TAG | grep Version | grep -v $APP_VERSION | awk '{print $3}')
-EU_OLD_INSTANCES=$(aws ec2 describe-instances --region eu-west-1 --filters "Name=tag:Version,Values=$EU_OLD_INSTANCES_VERSION" --query 'Reservations[].Instances[].InstanceId' --output text)
+EU_OLD_INSTANCES=$(aws ec2 describe-instances --region eu-west-1 --filters "Name=tag:Name,Values=eu.{YOUR_VALUE}.com" "Name=instance-state-name,Values=running" --query 'Reservations[].Instances[?Tags[?Key==`Version` && Value!=`'$APP_VERSION'`]].InstanceId' --output text)
 
 for OLD_INSTANCE in $EU_OLD_INSTANCES;
 do
-  echo "De-registering instance "$EU_OLD_INSTANCE" from ALB vpcsecure..."
-  aws elbv2 deregister-targets --region eu-west-1 --target-group-arn arn:aws:elasticloadbalancing:eu-west-1:{YOUR_VALUE}:targetgroup/vpcsecure-eu/8c0ea006118d31b9 --targets Id=$EU_OLD_INSTANCES
+  echo "De-registering instance $OLD_INSTANCE from ALB vpcsecure..."
+  aws elbv2 deregister-targets --region eu-west-1 --target-group-arn arn:aws:elasticloadbalancing:eu-west-1:{YOUR_VALUE}:targetgroup/vpcsecure-eu/{YOUR_VALUE} --targets Id=$OLD_INSTANCE
 done
 
 ## EU Deployment End
