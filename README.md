@@ -41,6 +41,10 @@ Bash Scripts to Automate
 
 > Shell Script to download MySQL Backup from S3, perform some specific Operations and Restore.
 
+### Server Maintenance 
+
+> Shell Script to automate common server maintenance tasks and send email alerts.
+
 ### Static Website Hosting on S3
 
 > Shell Script to upload files to AWS S3 Static Website Hosting because AWS S3 mismatches the header of the Static Content.
