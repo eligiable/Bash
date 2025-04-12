@@ -1,7 +1,128 @@
-#!/bin/sh
+#!/bin/bash
 
-# change it to "production" (without quotes) for on deploying proceess
-CONFIG_ENV=eu
+set -o errexit          # Exit immediately if any command fails
+set -o nounset          # Exit if any undefined variables are used
+set -o pipefail         # Fail pipeline if any command fails
+shopt -s inherit_errexit # Make subshells inherit error handling
 
-# start upstart script
-/root/upstart.sh $CONFIG_ENV
+### Configuration ###
+readonly CONFIG_ENV="eu"
+readonly S3_REGION="eu-west-1"
+readonly UPSTART_SCRIPT="/root/upstart.sh"
+readonly S3_UPSTART_PATH="s3://your-eu-bucket/scripts/upstart.sh"
+readonly MAX_WAIT_ATTEMPTS=30
+readonly WAIT_INTERVAL=1
+readonly DEPENDENCIES=("awscli" "jq")
+
+### Logging Setup ###
+setup_logging() {
+    readonly LOG_DIR="/var/log/user-data"
+    mkdir -p "$LOG_DIR"
+    readonly LOG_FILE="${LOG_DIR}/eu-user-data_$(date +%Y%m%d_%H%M%S).log"
+    exec > >(tee -a "$LOG_FILE") 2>&1
+}
+
+### Logging Functions ###
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] EU-DEPLOY: $*"
+}
+
+log_error() {
+    log "ERROR: $*" >&2
+}
+
+### Network Functions ###
+wait_for_network() {
+    log "Waiting for network connectivity..."
+    
+    local attempts=0
+    while (( attempts < MAX_WAIT_ATTEMPTS )); do
+        if ping -c1 8.8.8.8 &>/dev/null; then
+            log "Network connectivity established"
+            return 0
+        fi
+        sleep "$WAIT_INTERVAL"
+        (( attempts++ )) || true
+    done
+    
+    log_error "Network connectivity check timed out after ${MAX_WAIT_ATTEMPTS} attempts"
+    return 1
+}
+
+### System Configuration ###
+update_system() {
+    log "Starting system updates..."
+    if yum update -y; then
+        log "System updates completed successfully"
+    else
+        log_error "System updates failed"
+        return 1
+    fi
+}
+
+install_dependencies() {
+    log "Installing required dependencies: ${DEPENDENCIES[*]}"
+    
+    if yum install -y "${DEPENDENCIES[@]}"; then
+        log "Dependencies installed successfully"
+    else
+        log_error "Failed to install all dependencies"
+        return 1
+    fi
+}
+
+### Script Management ###
+fetch_upstart_script() {
+    log "Downloading upstart script from S3..."
+    
+    if aws s3 cp "$S3_UPSTART_PATH" "$UPSTART_SCRIPT" --region "$S3_REGION"; then
+        chmod +x "$UPSTART_SCRIPT"
+        log "Upstart script downloaded and made executable"
+    else
+        log_error "Failed to download upstart script from S3"
+        return 1
+    fi
+}
+
+execute_upstart() {
+    log "Executing upstart script with CONFIG_ENV=$CONFIG_ENV"
+    
+    if [[ ! -x "$UPSTART_SCRIPT" ]]; then
+        log_error "Upstart script not found or not executable at $UPSTART_SCRIPT"
+        return 1
+    fi
+    
+    if "$UPSTART_SCRIPT" "$CONFIG_ENV"; then
+        log "Upstart script executed successfully"
+    else
+        log_error "Upstart script execution failed"
+        return 1
+    fi
+}
+
+### Main Execution Flow ###
+main() {
+    setup_logging
+    log "Starting EU user-data script execution"
+    
+    # Phase 1: System preparation
+    wait_for_network || return $?
+    update_system || return $?
+    install_dependencies || return $?
+    
+    # Phase 2: Deployment setup
+    fetch_upstart_script || return $?
+    execute_upstart || return $?
+    
+    log "EU user-data script completed successfully"
+    return 0
+}
+
+### Execution Guard ###
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    if main; then
+        exit 0
+    else
+        exit 1
+    fi
+fi

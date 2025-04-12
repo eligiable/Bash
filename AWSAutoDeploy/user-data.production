@@ -1,7 +1,108 @@
-#!/bin/sh
+#!/bin/bash
+# Enhanced Production User Data Script
 
-# change it to "production" (without quotes) for on deploying proceess
-CONFIG_ENV=production
+set -o errexit
+set -o nounset
+set -o pipefail
+shopt -s inherit_errexit
 
-# start upstart script
-/root/upstart.sh $CONFIG_ENV
+### Constants ###
+readonly CONFIG_ENV="production"
+readonly UPSTART_SCRIPT="/root/upstart.sh"
+readonly S3_UPSTART_PATH="s3://your-bucket/scripts/upstart.sh"
+readonly MAX_WAIT_ATTEMPTS=30
+readonly WAIT_INTERVAL=1
+
+### Initialization ###
+init() {
+    setup_logging
+    wait_for_network
+    update_system
+    install_dependencies
+    fetch_upstart_script
+    execute_upstart
+}
+
+setup_logging() {
+    readonly LOG_DIR="/var/log/user-data"
+    mkdir -p "$LOG_DIR"
+    readonly LOG_FILE="${LOG_DIR}/user-data_$(date +%Y%m%d_%H%M%S).log"
+    exec > >(tee -a "$LOG_FILE") 2>&1
+    log "Starting production user-data script execution"
+}
+
+### Main Functions ###
+wait_for_network() {
+    log "Waiting for network connectivity..."
+    
+    local attempts=0
+    while (( attempts < MAX_WAIT_ATTEMPTS )); do
+        if ping -c1 8.8.8.8 &>/dev/null; then
+            log "Network connectivity established"
+            return 0
+        fi
+        (( attempts++ )) || true
+        sleep "$WAIT_INTERVAL"
+    done
+    
+    log_error "Failed to establish network connectivity"
+    return 1
+}
+
+update_system() {
+    log "Updating system packages..."
+    if ! yum update -y; then
+        log_error "System update failed"
+        return 1
+    fi
+    log "System updated successfully"
+}
+
+install_dependencies() {
+    local packages=("awscli" "jq")
+    log "Installing dependencies: ${packages[*]}"
+    
+    if ! yum install -y "${packages[@]}"; then
+        log_error "Failed to install dependencies"
+        return 1
+    fi
+    log "Dependencies installed successfully"
+}
+
+fetch_upstart_script() {
+    log "Fetching upstart script from S3..."
+    
+    if ! aws s3 cp "$S3_UPSTART_PATH" "$UPSTART_SCRIPT" --region us-east-1; then
+        log_error "Failed to download upstart script from S3"
+        return 1
+    fi
+    
+    chmod +x "$UPSTART_SCRIPT"
+    log "Upstart script downloaded and made executable"
+}
+
+execute_upstart() {
+    log "Executing upstart script with environment: $CONFIG_ENV"
+    
+    if [[ ! -x "$UPSTART_SCRIPT" ]]; then
+        log_error "Upstart script not found or not executable"
+        return 1
+    fi
+    
+    if ! "$UPSTART_SCRIPT" "$CONFIG_ENV"; then
+        log_error "Upstart script execution failed"
+        return 1
+    fi
+    
+    log "Production user-data script completed successfully"
+}
+
+### Main Execution ###
+main() {
+    init
+    exit 0
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi
