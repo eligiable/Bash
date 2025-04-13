@@ -3,39 +3,59 @@ Bash Scripts to Automate
 
 ### AWS Auto Deploy
 
-> Shell Script to deploy an Auto Scaled Environment from Base Image.
+> This system provides automated deployment of applications across AWS regions (US and EU) with blue-green deployment strategy. The solution includes instance creation, AMI management, load balancer updates, and automated cleanup.
 
 ### Mongo Self-Signed Certificate
 
-> Shell Script to create a Self Signed Certificate for Encrypted Traffic between Server and Client.
+> This project provides scripts to automate the generation of SSL/TLS certificates for MongoDB clusters with proper Subject Alternative Names (SANs) for secure communication between nodes.
 
-### Delete AWS EC2 Snapshots
+### Remote Logging
 
-> Shell Script to Delete AWS EC2 Snapshots on a Date/Time basis and exclude Snapshots required to be kept.
+> This rsyslog configuration sets up a centralized log server that: Listens on both UDP and TCP ports 61514 for remote logs, Organizes received logs by hostname and program name in daily files, Disables local logging to avoid duplication (when using systemd journal), and Includes proper journal integration and performance optimizations.
 
-### Delete AWS Media Store
+### Delete AWS EBS Snapshots
 
-> Shell Script to Delete AWS Media Store Files since there is no option to delete multiple files.
+> Deletes EBS snapshots older than specified date, with exclusions.
 
-### ELK Stack
+### Clear AWS Media Store Stream
 
-> Shell Script to install the latest Stable ELK Stack on Ubuntu/Debian.
+> This script deletes all objects in an AWS MediaStore stream path, Requires: awscli, jq.
+
+### Clear RAM Cache
+
+> This script clears the system's RAM cache and provides before/after memory statistics, Requires: bc (calculator) - will be installed automatically if missing.
+
+### ELK Stack 7x
+
+> Installs and configures ELK Stack (Elasticsearch, Logstash, Kibana) and Beats.
 
 ### Install XMRRig
 
-> Shell Script to install XMRRig on Ubuntu 14/16.
+> Install XMRRig on Ubuntu 14/16.
 
-### Mongo DB Backup to AWS S3
+### Magento2 JSON Cache Validator
 
-> Shell Script to Create Mongo DB Compressed Backup and upload it to AWS S3. Not suitable for Large Databases.
+> This script checks if JSON generation is running, validates the existence of required cache directories and files, counts JSON files per store, and triggers regeneration if needed. It's designed to ensure product/category JSON cache is properly maintained for a Magento 2 store.
 
-### Mongo DB Incremental Backup
+### MongoDB Backup to S3
 
-> Shell Script to Create Mongo DB Incremental Backup based on OPLog. OPLog needs to be enabled/configured.
+> This script performs a backup of a MongoDB database, compresses it, and uploads it to an AWS S3 bucket. It includes logging, error handling, and cleanup.
 
-### rsyslog configuration
+### MongoDB OPLog Incremental Backup
 
-> rsyslog.conf template to store logs under a single directory with tailoring HOSTNAME/LOGFOLDER/LOGFILE
+> This script performs incremental backups of MongoDB's oplog by dumping all operations that occurred since the last backup. It's designed to run periodically (e.g., hourly) to maintain a continuous backup of all database changes.
+
+### Restore Magento2 Prod to Stagging
+
+> This script performs the following operations: Backs up admin users from production database, Restores a production database backup to staging environment, Creates a parallel backup database, and Handles data sanitization and format conversion.
+
+### Server Maintenance
+
+> Performs comprehensive server maintenance tasks.
+
+### Sync Static Website to S3
+
+> This script performs two main functions: Syncs a local website directory to an S3 bucket while excluding specific file types that will be handled separately. Fixes content-type metadata for common web file types in the S3 bucket by setting the correct MIME types.
 
 ### Restore MySQL Backup from S3
 
@@ -49,18 +69,10 @@ Bash Scripts to Automate
 
 > Shell Script to upload files to AWS S3 Static Website Hosting because AWS S3 mismatches the header of the Static Content.
 
-### Verify JSON Generation
+### Website Health Monitor
 
-> Shell Script to check JSON Generation for Magento2 and send Email Alert.
+> Monitors website availability and manages MySQL sleep connections when the site is down. Sends email notifications for status changes.
 
-### Monitor Website/URL
+### Website Status Monitor
 
-> Shell Script to Monitor Website/URL and Send Email Alert.
-
-### Website/URL Status Check
-
-> Shell Script to keep Monitor Website/URL Status Header and if not found 200 perform operation e.g. Restart the Service.
-
-### clear RAM
-
-> Shell Script to clear RAM based on percentage.
+> This script checks if a website is online by attempting to access it multiple times. It verifies the HTTP status code and provides appropriate exit codes for monitoring systems.
